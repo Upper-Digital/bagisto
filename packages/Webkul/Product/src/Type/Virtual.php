@@ -2,6 +2,8 @@
 
 namespace Webkul\Product\Type;
 
+use Webkul\Product\Helpers\Indexers\Price\Virtual as VirtualIndexer;
+
 class Virtual extends AbstractType
 {
     /**
@@ -9,24 +11,16 @@ class Virtual extends AbstractType
      *
      * @var array
      */
-    protected $skipAttributes = ['length', 'width', 'height', 'weight', 'depth'];
-
-    /**
-     * These blade files will be included in product edit page.
-     *
-     * @var array
-     */
-    protected $additionalViews = [
-        'admin::catalog.products.accordians.inventories',
-        'admin::catalog.products.accordians.images',
-        'admin::catalog.products.accordians.videos',
-        'admin::catalog.products.accordians.categories',
-        'admin::catalog.products.accordians.channels',
-        'admin::catalog.products.accordians.product-links',
+    protected $skipAttributes = [
+        'length',
+        'width',
+        'height',
+        'weight',
+        'depth',
     ];
 
     /**
-     * Is a stokable product type.
+     * Is a stockable product type.
      *
      * @var bool
      */
@@ -50,11 +44,6 @@ class Virtual extends AbstractType
             return false;
         }
 
-        if (is_callable(config('products.isSaleable')) &&
-            call_user_func(config('products.isSaleable'), $this->product) === false) {
-            return false;
-        }
-
         if ($this->haveSufficientQuantity(1)) {
             return true;
         }
@@ -64,13 +53,14 @@ class Virtual extends AbstractType
 
     /**
      * Have sufficient quantity.
-     *
-     * @param  int  $qty
-     * @return bool
      */
     public function haveSufficientQuantity(int $qty): bool
     {
-        return $qty <= $this->totalQuantity() ? true : false;
+        if (! $this->product->manage_stock) {
+            return true;
+        }
+
+        return $qty <= $this->totalQuantity();
     }
 
     /**
@@ -78,8 +68,18 @@ class Virtual extends AbstractType
      *
      * @return float
      */
-    public function getMaximamPrice()
+    public function getMaximumPrice()
     {
         return $this->product->price;
+    }
+
+    /**
+     * Returns price indexer class for a specific product type
+     *
+     * @return string
+     */
+    public function getPriceIndexer()
+    {
+        return app(VirtualIndexer::class);
     }
 }

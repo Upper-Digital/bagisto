@@ -4,7 +4,7 @@ namespace Webkul\Product\Providers;
 
 use Illuminate\Foundation\AliasLoader;
 use Illuminate\Support\ServiceProvider;
-use Webkul\Product\Console\Commands\PriceUpdate;
+use Webkul\Product\Console\Commands\Indexer;
 use Webkul\Product\Facades\ProductImage as ProductImageFacade;
 use Webkul\Product\Facades\ProductVideo as ProductVideoFacade;
 use Webkul\Product\Models\ProductProxy;
@@ -16,28 +16,22 @@ class ProductServiceProvider extends ServiceProvider
 {
     /**
      * Bootstrap services.
-     *
-     * @return void
      */
     public function boot(): void
     {
-        include __DIR__ . '/../Http/helpers.php';
+        include __DIR__.'/../Http/helpers.php';
 
-        $this->loadMigrationsFrom(__DIR__ . '/../Database/Migrations');
+        $this->loadMigrationsFrom(__DIR__.'/../Database/Migrations');
+
+        $this->loadTranslationsFrom(__DIR__.'/../Resources/lang', 'product');
 
         $this->app->register(EventServiceProvider::class);
-
-        $this->publishes([
-            dirname(__DIR__) . '/Config/imagecache.php' => config_path('imagecache.php'),
-        ]);
 
         ProductProxy::observe(ProductObserver::class);
     }
 
     /**
      * Register services.
-     *
-     * @return void
      */
     public function register(): void
     {
@@ -50,30 +44,24 @@ class ProductServiceProvider extends ServiceProvider
 
     /**
      * Register configuration.
-     *
-     * @return void
      */
     public function registerConfig(): void
     {
-        $this->mergeConfigFrom(dirname(__DIR__) . '/Config/product_types.php', 'product_types');
+        $this->mergeConfigFrom(dirname(__DIR__).'/Config/product_types.php', 'product_types');
     }
 
     /**
      * Register the console commands of this package.
-     *
-     * @return void
      */
     protected function registerCommands(): void
     {
         if ($this->app->runningInConsole()) {
-            $this->commands([PriceUpdate::class]);
+            $this->commands([Indexer::class]);
         }
     }
 
     /**
      * Register Bouncer as a singleton.
-     *
-     * @return void
      */
     protected function registerFacades(): void
     {
@@ -82,18 +70,18 @@ class ProductServiceProvider extends ServiceProvider
          */
         $loader = AliasLoader::getInstance();
 
-        $loader->alias('productimage', ProductImageFacade::class);
+        $loader->alias('product_image', ProductImageFacade::class);
 
-        $this->app->singleton('productimage', function () {
+        $this->app->singleton('product_image', function () {
             return app()->make(ProductImage::class);
         });
 
         /**
          * Product video.
          */
-        $loader->alias('productvideo', ProductVideoFacade::class);
+        $loader->alias('product_video', ProductVideoFacade::class);
 
-        $this->app->singleton('productvideo', function () {
+        $this->app->singleton('product_video', function () {
             return app()->make(ProductVideo::class);
         });
     }

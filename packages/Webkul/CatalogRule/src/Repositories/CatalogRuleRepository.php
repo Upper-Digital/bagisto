@@ -2,8 +2,7 @@
 
 namespace Webkul\CatalogRule\Repositories;
 
-use Illuminate\Container\Container as App;
-use Illuminate\Support\Facades\Event;
+use Illuminate\Container\Container;
 use Webkul\Attribute\Repositories\AttributeFamilyRepository;
 use Webkul\Attribute\Repositories\AttributeRepository;
 use Webkul\Category\Repositories\CategoryRepository;
@@ -15,11 +14,6 @@ class CatalogRuleRepository extends Repository
     /**
      * Create a new repository instance.
      *
-     * @param  \Webkul\Attribute\Repositories\AttributeFamilyRepository  $attributeFamilyRepository
-     * @param  \Webkul\Attribute\Repositories\AttributeRepository  $attributeRepository
-     * @param  \Webkul\Category\Repositories\CategoryRepository  $categoryRepository
-     * @param  \Webkul\Tax\Repositories\TaxCategoryRepository  $taxCategoryRepository
-     * @param  \Illuminate\Container\Container  $app
      * @return void
      */
     public function __construct(
@@ -27,37 +21,31 @@ class CatalogRuleRepository extends Repository
         protected AttributeRepository $attributeRepository,
         protected CategoryRepository $categoryRepository,
         protected TaxCategoryRepository $taxCategoryRepository,
-        App $app
-    )
-    {
-        parent::__construct($app);
+        Container $container
+    ) {
+        parent::__construct($container);
     }
 
     /**
      * Specify model class name.
-     *
-     * @return mixed
      */
-    public function model()
+    public function model(): string
     {
-        return \Webkul\CatalogRule\Contracts\CatalogRule::class;
+        return 'Webkul\CatalogRule\Contracts\CatalogRule';
     }
 
     /**
      * Create.
      *
-     * @param  array  $data
      * @return \Webkul\CatalogRule\Contracts\CatalogRule
      */
     public function create(array $data)
     {
-        Event::dispatch('promotions.catalog_rule.create.before');
-
-        $data['starts_from'] = $data['starts_from'] ?: null;
-
-        $data['ends_till'] = $data['ends_till'] ?: null;
-
-        $data['status'] = ! isset($data['status']) ? 0 : 1;
+        $data = array_merge($data, [
+            'starts_from' => $data['starts_from'] ?? null,
+            'ends_till'   => $data['ends_till'] ?? null,
+            'status'      => isset($data['status']),
+        ]);
 
         $catalogRule = parent::create($data);
 
@@ -65,57 +53,33 @@ class CatalogRuleRepository extends Repository
 
         $catalogRule->customer_groups()->sync($data['customer_groups']);
 
-        Event::dispatch('promotions.catalog_rule.create.after', $catalogRule);
-
         return $catalogRule;
     }
 
     /**
      * Update.
      *
-     * @param  array  $data
      * @param  int  $id
-     * @param  string  $attribute
      * @return \Webkul\CatalogRule\Contracts\CatalogRule
      */
-    public function update(array $data, $id, $attribute = 'id')
+    public function update(array $data, $id)
     {
-        Event::dispatch('promotions.catalog_rule.update.before', $id);
-
-        $data['starts_from'] = $data['starts_from'] ?: null;
-
-        $data['ends_till'] = $data['ends_till'] ?: null;
-
-        $data['status'] = ! isset($data['status']) ? 0 : 1;
-
-        $data['conditions'] = $data['conditions'] ?? [];
+        $data = array_merge($data, [
+            'starts_from' => $data['starts_from'] ?? null,
+            'ends_till'   => $data['ends_till'] ?? null,
+            'status'      => isset($data['status']),
+            'conditions'  => $data['conditions'] ?? [],
+        ]);
 
         $catalogRule = $this->find($id);
 
-        parent::update($data, $id, $attribute);
+        parent::update($data, $id);
 
         $catalogRule->channels()->sync($data['channels']);
 
         $catalogRule->customer_groups()->sync($data['customer_groups']);
 
-        Event::dispatch('promotions.catalog_rule.update.after', $catalogRule);
-
         return $catalogRule;
-    }
-
-    /**
-     * Delete.
-     *
-     * @param  $id
-     * @return int
-     */
-    public function delete($id)
-    {
-        Event::dispatch('promotions.catalog_rule.delete.before', $id);
-
-        parent::delete($id);
-
-        Event::dispatch('promotions.catalog_rule.delete.after', $id);
     }
 
     /**
@@ -128,17 +92,17 @@ class CatalogRuleRepository extends Repository
         $attributes = [
             [
                 'key'      => 'product',
-                'label'    => trans('admin::app.promotions.catalog-rules.product-attribute'),
+                'label'    => trans('admin::app.marketing.promotions.catalog-rules.create.product-attribute'),
                 'children' => [
                     [
                         'key'     => 'product|category_ids',
                         'type'    => 'multiselect',
-                        'label'   => trans('admin::app.promotions.catalog-rules.categories'),
+                        'label'   => trans('admin::app.marketing.promotions.catalog-rules.create.categories'),
                         'options' => $this->categoryRepository->getCategoryTree(),
                     ], [
                         'key'     => 'product|attribute_family_id',
                         'type'    => 'select',
-                        'label'   => trans('admin::app.promotions.catalog-rules.attribute_family'),
+                        'label'   => trans('admin::app.marketing.promotions.catalog-rules.create.attribute-family'),
                         'options' => $this->getAttributeFamilies(),
                     ],
                 ],
@@ -167,7 +131,7 @@ class CatalogRuleRepository extends Repository
             }
 
             $attributes[0]['children'][] = [
-                'key'     => 'product|' . $attribute->code,
+                'key'     => 'product|'.$attribute->code,
                 'type'    => $attribute->type,
                 'label'   => $attribute->name,
                 'options' => $options,

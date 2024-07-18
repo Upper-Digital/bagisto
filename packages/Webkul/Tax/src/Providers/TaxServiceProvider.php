@@ -2,7 +2,9 @@
 
 namespace Webkul\Tax\Providers;
 
+use Illuminate\Foundation\AliasLoader;
 use Illuminate\Support\ServiceProvider;
+use Webkul\Tax\Tax;
 
 class TaxServiceProvider extends ServiceProvider
 {
@@ -13,20 +15,20 @@ class TaxServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        $this->loadMigrationsFrom(__DIR__ . '/../Database/Migrations');
-        $this->loadFactoriesFrom(__DIR__ . '/../Database/Factories');
-        $this->loadTranslationsFrom(__DIR__ . '/../Resources/lang', 'tax');
+        $this->loadMigrationsFrom(__DIR__.'/../Database/Migrations');
+
+        $this->loadFactoriesFrom(__DIR__.'/../Database/Factories');
     }
 
     /**
      * Register services.
-     *
-     * @return void
      */
-    public function register()
+    public function register(): void
     {
-        $this->mergeConfigFrom(
-            dirname(__DIR__) . '/Config/system.php', 'core'
-        );
+        $loader = AliasLoader::getInstance();
+
+        $loader->alias('tax', Tax::class);
+
+        $this->app->singleton('tax', Tax::class);
     }
 }

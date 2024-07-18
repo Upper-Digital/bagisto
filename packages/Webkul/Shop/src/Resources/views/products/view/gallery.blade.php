@@ -1,226 +1,295 @@
-@inject ('wishListHelper', 'Webkul\Customer\Helpers\Wishlist')
+<v-product-gallery ref="gallery">
+    <x-shop::shimmer.products.gallery />
+</v-product-gallery>
 
-@php
-    $images = productimage()->getGalleryImages($product);
-
-    $videos = productvideo()->getVideos($product);
-
-    $images = array_merge($images, $videos);
-@endphp
-
-{!! view_render_event('bagisto.shop.products.view.gallery.before', ['product' => $product]) !!}
-
-<div class="product-image-group">
-    <div class="cp-spinner cp-round" id="loader"></div>
-
-    <product-gallery></product-gallery>
-
-    @include ('shop::products.view.product-add')
-</div>
-
-{!! view_render_event('bagisto.shop.products.view.gallery.after', ['product' => $product]) !!}
-
-@push('scripts')
-    <script type="text/x-template" id="product-gallery-template">
+@pushOnce('scripts')
+    <script
+        type="text/x-template"
+        id="v-product-gallery-template"
+    >
         <div>
-            <ul class="thumb-list">
-                <li class="gallery-control top" @click="moveThumbs('top')" v-if="(thumbs.length > 4) && this.is_move.up">
-                    <span class="overlay"></span>
-                    
-                    <i class="icon arrow-up-white-icon"></i>
-                </li>
+            <!-- For large screens greater than 1180px. -->
+            <div class="sticky top-20 flex h-max gap-8 max-1180:hidden">
+                <!-- Product Image and Videos Slider -->
+                <div class="flex-24 h-509 flex min-w-[100px] max-w-[100px] flex-wrap place-content-start justify-center gap-2.5 overflow-y-auto overflow-x-hidden">
+                    <!-- Arrow Up -->
+                    <span
+                        class="icon-arrow-up cursor-pointer text-2xl"
+                        role="button"
+                        aria-label="@lang('shop::app.components.products.carousel.previous')"
+                        tabindex="0"
+                        @click="swipeDown"
+                        v-if="lengthOfMedia"
+                    >
+                    </span>
 
-                <li class="thumb-frame" v-for='(thumb, index) in thumbs' @mouseover="changeImage(thumb)" :class="[thumb.large_image_url == currentLargeImageUrl ? 'active' : '']" id="thumb-frame">
-                    <video v-if="thumb.type == 'video'" width="100%" height="100%" onclick="this.paused ? this.play() : this.pause();">
-                        <source :src="thumb.video_url" type="video/mp4">
-                        {{ __('admin::app.catalog.products.not-support-video') }}
-                    </video>
+                    <!-- Swiper Container -->
+                    <div
+                        ref="swiperContainer"
+                        class="flex flex-col max-h-[540px] gap-2.5 [&>*]:flex-[0] overflow-auto scroll-smooth scrollbar-hide"
+                    >
+                        <template v-for="(media, index) in [...media.images, ...media.videos]">
+                            <video
+                                v-if="media.type == 'videos'"
+                                :class="`transparent max-h-[100px] min-w-[100px] cursor-pointer rounded-xl border ${isActiveMedia(index) ? 'pointer-events-none border border-navyBlue' : 'border-white'}`"
+                                @click="change(media, index)"
+                                alt="{{ $product->name }}"
+                                tabindex="0"
+                            >
+                                <source
+                                    :src="media.video_url"
+                                    type="video/mp4"
+                                />
+                            </video>
 
-                    <img v-else  :src="thumb.small_image_url" alt=""/>
-                </li>
+                            <img
+                                v-else
+                                :class="`transparent max-h-[100px] min-w-[100px] cursor-pointer rounded-xl border ${isActiveMedia(index) ? 'pointer-events-none border border-navyBlue' : 'border-white'}`"
+                                :src="media.small_image_url"
+                                alt="{{ $product->name }}"
+                                width="100"
+                                height="100"
+                                tabindex="0"
+                                @click="change(media, index)"
+                            />
+                        </template>
+                    </div>
 
-                <li class="gallery-control bottom" @click="moveThumbs('bottom')" v-if="(thumbs.length > 4) && this.is_move.down">
-                    <span class="overlay"></span>
+                    <!-- Arrow Down -->
+                    <span
+                        class="icon-arrow-down cursor-pointer text-2xl"
+                        v-if= "lengthOfMedia"
+                        role="button"
+                        aria-label="@lang('shop::app.components.products.carousel.previous')"
+                        tabindex="0"
+                        @click="swipeTop"
+                    >
+                    </span>
+                </div>
 
-                    <i class="icon arrow-down-white-icon"></i>
-                </li>
-            </ul>
+                <!-- Product Base Image and Video with Shimmer-->
+                <div
+                    class="max-h-[610px] max-w-[560px]"
+                    v-show="isMediaLoading"
+                >
+                    <div class="shimmer min-h-[607px] min-w-[560px] rounded-xl bg-zinc-200"></div>
+                </div>
 
-            <div class="product-hero-image" id="product-hero-image">
-                <video :key="currentVideoUrl" v-if="currentType == 'video'" width="100%" height="420" controls>
-                    <source :src="currentVideoUrl" :data-image="currentOriginalImageUrl"  type="video/mp4">
+                <div
+                    class="max-h-[610px] max-w-[560px]"
+                    v-show="! isMediaLoading"
+                >
+                    <img
+                        class="min-w-[450px] cursor-pointer rounded-xl"
+                        :src="baseFile.path"
+                        v-if="baseFile.type == 'image'"
+                        alt="{{ $product->name }}"
+                        width="560"
+                        height="610"
+                        tabindex="0"
+                        @click="isImageZooming = !isImageZooming"
+                        @load="onMediaLoad()"
+                    />
 
-                    {{ __('admin::app.catalog.products.not-support-video') }}
-                </video>
-
-                <img v-else :src="currentLargeImageUrl" id="pro-img" :data-image="currentOriginalImageUrl" alt=""/>
-
-                @auth('customer')
-                    @php
-                        $showWishlist = core()->getConfigData('general.content.shop.wishlist_option') == "1" ? true : false;
-                    @endphp
-
-                    @if ($showWishlist)
-                        <form id="wishlist-{{ $product->product_id }}" action="{{ route('customer.wishlist.add', $product->product_id) }}" method="POST">
-                            @csrf
-                        </form>
-
-                        <a
-                            @if ($wishListHelper->getWishlistProduct($product))
-                                class="add-to-wishlist already"
-                            @else
-                                class="add-to-wishlist"
-                            @endif
-                            href="javascript:void(0);"
-                            onclick="document.getElementById('wishlist-{{ $product->product_id }}').submit();">
-                        </a>
-                    @endif
-                @endauth
+                    <div
+                        class="min-w-[450px] cursor-pointer rounded-xl"
+                        tabindex="0"
+                        v-if="baseFile.type == 'video'"
+                    >
+                        <video
+                            controls
+                            width="475"
+                            alt="{{ $product->name }}"
+                            @click="isImageZooming = !isImageZooming"
+                            @loadeddata="onMediaLoad()"
+                            :key="baseFile.path"
+                        >
+                            <source
+                                :src="baseFile.path"
+                                type="video/mp4"
+                            />
+                        </video>
+                    </div>
+                </div>
             </div>
+
+            <!-- Product Images and Videos for Medium & Small Screen -->
+            <div
+                class="overflow-hidden 1180:hidden"
+                v-show="isMediaLoading"
+            >
+                <div class="shimmer aspect-square max-h-screen w-screen bg-zinc-200"></div>
+            </div>
+        
+            <div
+                class="scrollbar-hide flex w-screen gap-8 overflow-auto max-sm:gap-5 1180:hidden"
+                v-show="! isMediaLoading"
+            >
+                <!-- Show single media if there is only one image or video -->
+                <template 
+                    v-if="media.images.length + media.videos.length <= 1"
+                    v-for="(media, index) in [...media.images, ...media.videos]"
+                >
+                    <div class="w-full flex-shrink-0 snap-center">
+                        <video
+                            v-if="media.type == 'videos'"
+                            alt="{{ $product->name }}"
+                            controls
+                            @click="isImageZooming = !isImageZooming"
+                            class="w-full"
+                        >
+                            <source
+                                :src="media.video_url"
+                                type="video/mp4"
+                            />
+                        </video>
+            
+                        <img
+                            v-else
+                            :src="media.large_image_url"
+                            alt="{{ $product->name }}"
+                            width="490"
+                            height="550"
+                            @click="isImageZooming = !isImageZooming"
+                            class="w-full"
+                        />
+                    </div>
+                </template>
+                
+                 <!-- Show carousel if there is more than one image or video -->
+                <x-shop::products.mobile.carousel
+                    v-else
+                    ::options="[...media.images, ...media.videos]"
+                    @click="isImageZooming = !isImageZooming"
+                />
+            </div>
+            
+            <!-- Gallery Images Zoomer -->
+            <x-shop::image-zoomer 
+                ::attachments="attachments" 
+                ::is-image-zooming="isImageZooming" 
+                ::initial-index="`media_${activeIndex}`"
+            />
         </div>
     </script>
 
-    <script>
-        let galleryImages = @json($images);
+    <script type="module">
+        app.component('v-product-gallery', {
+            template: '#v-product-gallery-template',
 
-        Vue.component('product-gallery', {
-
-            template: '#product-gallery-template',
-
-            data: function() {
+            data() {
                 return {
-                    images: galleryImages,
+                    isImageZooming: false,
 
-                    thumbs: [],
+                    isMediaLoading: true,
 
-                    currentLargeImageUrl: '',
+                    media: {
+                        images: @json(product_image()->getGalleryImages($product)),
 
-                    currentOriginalImageUrl: '',
-
-                    currentVideoUrl: '',
-
-                    currentType: '',
-
-                    counter: {
-                        up: 0,
-                        down: 0,
+                        videos: @json(product_video()->getVideos($product)),
                     },
 
-                    is_move: {
-                        up: true,
-                        down: true,
-                    }
-                }
+                    baseFile: {
+                        type: '',
+
+                        path: ''
+                    },
+
+                    activeIndex: 0,
+
+                    containerOffset: 110,
+                };
             },
 
             watch: {
-                'images': function(newVal, oldVal) {
-                    this.changeImage(this.images[0]);
+                'media.images': {
+                    deep: true,
 
-                    this.prepareThumbs();
+                    handler(newImages, oldImages) {
+                        let selectedImage = newImages?.[this.activeIndex];
+
+                        if (JSON.stringify(newImages) !== JSON.stringify(oldImages) && selectedImage?.large_image_url) {
+                            this.baseFile.path = selectedImage.large_image_url;
+                        }
+                    },
+                },
+            },
+        
+            mounted() {
+                if (this.media.images.length) {
+
+                    this.baseFile.type = 'image';
+
+                    this.baseFile.path = this.media.images[0].large_image_url;
+                } else if (this.media.videos.length) {
+
+                    this.baseFile.type = 'video';
+
+                    this.baseFile.path = this.media.videos[0].video_url;
                 }
             },
 
-            created: function() {
-                this.changeImage(this.images[0]);
+            computed: {
+                lengthOfMedia() {
+                    if (this.media.images.length) {
+                        return [...this.media.images, ...this.media.videos].length > 5;
+                    }
+                },
 
-                this.prepareThumbs();
+                attachments() {
+                    return [...this.media.images, ...this.media.videos].map(media => ({
+                        url: media.type === 'videos' ? media.video_url : media.original_image_url,
+                        
+                        type: media.type === 'videos' ? 'video' : 'image',
+                    }));
+                },
             },
 
             methods: {
-                prepareThumbs: function() {
-                    let self = this;
-
-                    self.thumbs = [];
-
-                    this.images.forEach(function(image) {
-                        self.thumbs.push(image);
-                    });
+                isActiveMedia(index) {
+                    return index === this.activeIndex;
+                },
+                
+                onMediaLoad() {
+                    this.isMediaLoading = false;
                 },
 
-                changeImage: function(image) {
-                    this.currentType = image.type;
+                change(media, index) {
+                    this.isMediaLoading = true;
 
-                    if (image.type == 'video') {
-                        this.currentVideoUrl = image.video_url;
+                    if (media.type == 'videos') {
+                        this.baseFile.type = 'video';
 
-                        this.currentLargeImageUrl = image.large_image_url = image.video_url;
+                        this.baseFile.path = media.video_url;
+
+                        this.onMediaLoad();
                     } else {
-                        this.currentLargeImageUrl = image.large_image_url;
+                        this.baseFile.type = 'image';
 
-                        this.currentOriginalImageUrl = image.original_image_url;
+                        this.baseFile.path = media.large_image_url;
                     }
 
-                    if ($(window).width() > 580 && image.original_image_url) {
-                        $('img#pro-img').data('zoom-image', image.original_image_url).ezPlus();
+                    if (index > this.activeIndex) {
+                        this.swipeDown();
+                    } else if (index < this.activeIndex) {
+                        this.swipeTop();
                     }
+
+                    this.activeIndex = index;
                 },
 
-                moveThumbs: function(direction) {
-                    let len = this.thumbs.length;
+                swipeTop() {
+                    const container = this.$refs.swiperContainer;
 
-                    if (direction === "top") {
-                        const moveThumb = this.thumbs.splice(len - 1, 1);
-
-                        this.thumbs = [moveThumb[0]].concat((this.thumbs));
-
-                        this.counter.up = this.counter.up+1;
-
-                        this.counter.down = this.counter.down-1;
-
-                    } else {
-                        const moveThumb = this.thumbs.splice(0, 1);
-
-                        this.thumbs = [].concat((this.thumbs), [moveThumb[0]]);
-
-                        this.counter.down = this.counter.down+1;
-
-                        this.counter.up = this.counter.up-1;
-                    }
-
-                    if ((len-4) == this.counter.down) {
-                        this.is_move.down = false;
-                    } else {
-                        this.is_move.down = true;
-                    }
-
-                    if ((len-4) == this.counter.up) {
-                        this.is_move.up = false;
-                    } else {
-                        this.is_move.up = true;
-                    }
+                    container.scrollTop -= this.containerOffset;
                 },
-            }
+
+                swipeDown() {
+                    const container = this.$refs.swiperContainer;
+
+                    container.scrollTop += this.containerOffset;
+                },
+            },
         });
     </script>
-
-    <script>
-        $(document).ready(function() {
-            if ($(window).width() > 580) {
-                $('img#pro-img').data('zoom-image', $('img#pro-img').data('image')).ezPlus();
-            }
-
-            @if (auth()->guard('customer')->user())
-                let wishlist = "{{ $wishListHelper->getWishlistProduct($product) ? 'true' : 'false' }}";
-
-                $(document).mousemove(function(event) {
-                    if ($('.add-to-wishlist').length || wishlist != 0) {
-                        if (event.pageX > $('.add-to-wishlist').offset().left && event.pageX < $('.add-to-wishlist').offset().left+32 && event.pageY > $('.add-to-wishlist').offset().top && event.pageY < $('.add-to-wishlist').offset().top+32) {
-
-                            $(".zoomContainer").addClass("show-wishlist");
-
-                        } else {
-                            $(".zoomContainer").removeClass("show-wishlist");
-                        }
-                    };
-
-                    if ($("body").hasClass("rtl")) {
-                        $(".zoomWindow").addClass("zoom-image-direction");
-                    } else {
-                        $(".zoomWindow").removeClass("zoom-image-direction");
-                    }
-                });
-            @endif
-        });
-    </script>
-@endpush
+@endpushOnce

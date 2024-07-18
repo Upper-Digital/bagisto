@@ -3,6 +3,7 @@
 namespace Webkul\Core\Console\Commands;
 
 use Illuminate\Foundation\Console\DownCommand as OriginalCommand;
+use Illuminate\Support\Str;
 
 class DownChannelCommand extends OriginalCommand
 {
@@ -12,7 +13,7 @@ class DownChannelCommand extends OriginalCommand
      * @var string
      */
     protected $signature = 'channel:down {--redirect= : The path that users should be redirected to}
-                                         {--render= : The view that should be prerendered for display during maintenance mode}
+                                         {--render= : The view that should be pre-rendered for display during maintenance mode}
                                          {--retry= : The number of seconds after which the request may be retried}
                                          {--refresh= : The number of seconds after which the browser may refresh}
                                          {--secret= : The secret phrase that may be used to bypass maintenance mode}
@@ -33,5 +34,15 @@ class DownChannelCommand extends OriginalCommand
     public function handle()
     {
         parent::handle();
+    }
+
+    /**
+     * Generate the random phrase maintenance mode recover
+     *
+     * @return string
+     */
+    public function getSecret()
+    {
+        return Str::random();
     }
 }

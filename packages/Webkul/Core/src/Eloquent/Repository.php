@@ -4,14 +4,69 @@ namespace Webkul\Core\Eloquent;
 
 use Prettus\Repository\Contracts\CacheableInterface;
 use Prettus\Repository\Eloquent\BaseRepository;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Container\Container as App;
 use Prettus\Repository\Traits\CacheableRepository;
 
-
-abstract class Repository extends BaseRepository implements CacheableInterface {
-
+abstract class Repository extends BaseRepository implements CacheableInterface
+{
     use CacheableRepository;
+
+    /**
+     * @var bool
+     */
+    protected $cacheEnabled = false;
+
+    /**
+     * @return bool
+     */
+    public function allowedClean()
+    {
+        if (! isset($this->cleanEnabled)) {
+            return config('repository.cache.clean.enabled', true);
+        }
+
+        return $this->cleanEnabled;
+    }
+
+    /**
+     * @return bool
+     */
+    protected function allowedCache($method)
+    {
+        $className = get_class($this);
+
+        $cacheEnabled = config("repository.cache.repositories.{$className}.enabled", config('repository.cache.enabled', true));
+
+        if (! $cacheEnabled) {
+            return false;
+        }
+
+        $cacheOnly = isset($this->cacheOnly) ? $this->cacheOnly : config("repository.cache.repositories.{$className}.allowed.only", config('repository.cache.allowed.only', null));
+        $cacheExcept = isset($this->cacheExcept) ? $this->cacheExcept : config("repository.cache.repositories.{$className}.allowed.except", config('repository.cache.allowed.only', null));
+
+        if (is_array($cacheOnly)) {
+            return in_array($method, $cacheOnly);
+        }
+
+        if (is_array($cacheExcept)) {
+            return ! in_array($method, $cacheExcept);
+        }
+
+        if (is_null($cacheOnly) && is_null($cacheExcept)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * @throws RepositoryException
+     */
+    public function resetModel()
+    {
+        $this->makeModel();
+
+        return $this;
+    }
 
     /**
      * Find data by field and value
@@ -77,10 +132,9 @@ abstract class Repository extends BaseRepository implements CacheableInterface {
         return $this->parserResult($model);
     }
 
-     /**
+    /**
      * Count results of repository
      *
-     * @param  array  $where
      * @param  string  $columns
      * @return int
      */

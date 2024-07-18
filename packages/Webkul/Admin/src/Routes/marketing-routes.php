@@ -1,201 +1,205 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Webkul\CartRule\Http\Controllers\CartRuleController;
-use Webkul\CartRule\Http\Controllers\CartRuleCouponController;
-use Webkul\CatalogRule\Http\Controllers\CatalogRuleController;
-use Webkul\Core\Http\Controllers\SubscriptionController;
-use Webkul\Marketing\Http\Controllers\CampaignController;
-use Webkul\Marketing\Http\Controllers\EventController;
-use Webkul\Marketing\Http\Controllers\TemplateController;
-use Webkul\Sitemap\Http\Controllers\Admin\SitemapController;
+use Webkul\Admin\Http\Controllers\Marketing\Communications\CampaignController;
+use Webkul\Admin\Http\Controllers\Marketing\Communications\EventController;
+use Webkul\Admin\Http\Controllers\Marketing\Communications\SubscriptionController;
+use Webkul\Admin\Http\Controllers\Marketing\Communications\TemplateController;
+use Webkul\Admin\Http\Controllers\Marketing\Promotions\CartRuleController;
+use Webkul\Admin\Http\Controllers\Marketing\Promotions\CartRuleCouponController;
+use Webkul\Admin\Http\Controllers\Marketing\Promotions\CatalogRuleController;
+use Webkul\Admin\Http\Controllers\Marketing\SearchSEO\SearchSynonymController;
+use Webkul\Admin\Http\Controllers\Marketing\SearchSEO\SearchTermController;
+use Webkul\Admin\Http\Controllers\Marketing\SearchSEO\SitemapController;
+use Webkul\Admin\Http\Controllers\Marketing\SearchSEO\URLRewriteController;
 
 /**
  * Marketing routes.
  */
-Route::group(['middleware' => ['web', 'admin'], 'prefix' => config('app.admin_url')], function () {
-    Route::prefix('promotions')->group(function () {
+Route::group(['middleware' => ['admin'], 'prefix' => config('app.admin_url')], function () {
+    Route::prefix('marketing')->group(function () {
         /**
-         * Cart rules routes.
+         * Promotions routes.
          */
-        Route::get('cart-rules', [CartRuleController::class, 'index'])->defaults('_config', [
-            'view' => 'admin::marketing.promotions.cart-rules.index',
-        ])->name('admin.cart-rules.index');
+        Route::prefix('promotions')->group(function () {
+            /**
+             * Cart rules routes.
+             */
+            Route::controller(CartRuleController::class)->prefix('cart-rules')->group(function () {
+                Route::get('', 'index')->name('admin.marketing.promotions.cart_rules.index');
 
-        Route::get('cart-rules/create', [CartRuleController::class, 'create'])->defaults('_config', [
-            'view' => 'admin::marketing.promotions.cart-rules.create',
-        ])->name('admin.cart-rules.create');
+                Route::get('create', 'create')->name('admin.marketing.promotions.cart_rules.create');
 
-        Route::post('cart-rules/create', [CartRuleController::class, 'store'])->defaults('_config', [
-            'redirect' => 'admin.cart-rules.index',
-        ])->name('admin.cart-rules.store');
+                Route::post('create', 'store')->name('admin.marketing.promotions.cart_rules.store');
 
-        Route::get('cart-rules/copy/{id}', [CartRuleController::class, 'copy'])->defaults('_config', [
-            'view' => 'admin::marketing.promotions.cart-rules.edit',
-        ])->name('admin.cart-rules.copy');
+                Route::get('copy/{id}', 'copy')->name('admin.marketing.promotions.cart_rules.copy');
 
-        Route::get('cart-rules/edit/{id}', [CartRuleController::class, 'edit'])->defaults('_config', [
-            'view' => 'admin::marketing.promotions.cart-rules.edit',
-        ])->name('admin.cart-rules.edit');
+                Route::get('edit/{id}', 'edit')->name('admin.marketing.promotions.cart_rules.edit');
 
-        Route::post('cart-rules/edit/{id}', [CartRuleController::class, 'update'])->defaults('_config', [
-            'redirect' => 'admin.cart-rules.index',
-        ])->name('admin.cart-rules.update');
+                Route::put('edit/{id}', 'update')->name('admin.marketing.promotions.cart_rules.update');
 
-        Route::post('cart-rules/delete/{id}', [CartRuleController::class, 'destroy'])->name('admin.cart-rules.delete');
+                Route::delete('edit/{id}', 'destroy')->name('admin.marketing.promotions.cart_rules.delete');
+            });
 
-        /**
-         * Cart rule coupons routes.
-         */
-        Route::get('cart-rule-coupons/{id}', [CartRuleCouponController::class, 'index'])->name('admin.cart-rules-coupons.index');
+            /**
+             * Cart rule coupons routes.
+             */
+            Route::controller(CartRuleCouponController::class)->prefix('cart-rules/coupons')->group(function () {
+                Route::post('mass-delete', 'massDestroy')->name('admin.marketing.promotions.cart_rules.coupons.mass_delete');
 
-        Route::post('cart-rule-coupons/{id}', [CartRuleCouponController::class, 'store'])->name('admin.cart-rules-coupons.store');
+                Route::get('{id}', 'index')->name('admin.marketing.promotions.cart_rules.coupons.index');
 
-        Route::post('cart-rule-coupons/mass-delete', [CartRuleCouponController::class, 'massDelete'])->name('admin.cart-rule-coupons.mass-delete');
+                Route::post('{id}', 'store')->name('admin.marketing.promotions.cart_rules.coupons.store');
 
-        /**
-         * Catalog rules routes.
-         */
-        Route::get('catalog-rules', [CatalogRuleController::class, 'index'])->defaults('_config', [
-            'view' => 'admin::marketing.promotions.catalog-rules.index',
-        ])->name('admin.catalog-rules.index');
+                Route::delete('edit/{id}', 'destroy')->name('admin.marketing.promotions.cart_rules.coupons.delete');
+            });
 
-        Route::get('catalog-rules/create', [CatalogRuleController::class, 'create'])->defaults('_config', [
-            'view' => 'admin::marketing.promotions.catalog-rules.create',
-        ])->name('admin.catalog-rules.create');
+            /**
+             * Catalog rules routes.
+             */
+            Route::controller(CatalogRuleController::class)->prefix('catalog-rules')->group(function () {
+                Route::get('', 'index')->name('admin.marketing.promotions.catalog_rules.index');
 
-        Route::post('catalog-rules/create', [CatalogRuleController::class, 'store'])->defaults('_config', [
-            'redirect' => 'admin.catalog-rules.index',
-        ])->name('admin.catalog-rules.store');
+                Route::get('create', 'create')->name('admin.marketing.promotions.catalog_rules.create');
 
-        Route::get('catalog-rules/edit/{id}', [CatalogRuleController::class, 'edit'])->defaults('_config', [
-            'view' => 'admin::marketing.promotions.catalog-rules.edit',
-        ])->name('admin.catalog-rules.edit');
+                Route::post('create', 'store')->name('admin.marketing.promotions.catalog_rules.store');
 
-        Route::post('catalog-rules/edit/{id}', [CatalogRuleController::class, 'update'])->defaults('_config', [
-            'redirect' => 'admin.catalog-rules.index',
-        ])->name('admin.catalog-rules.update');
+                Route::get('edit/{id}', 'edit')->name('admin.marketing.promotions.catalog_rules.edit');
 
-        Route::post('catalog-rules/delete/{id}', [CatalogRuleController::class, 'destroy'])->name('admin.catalog-rules.delete');
+                Route::put('edit/{id}', 'update')->name('admin.marketing.promotions.catalog_rules.update');
+
+                Route::delete('edit/{id}', 'destroy')->name('admin.marketing.promotions.catalog_rules.delete');
+            });
+        });
 
         /**
-         * Campaigns routes.
+         * Communication routes.
          */
-        Route::get('campaigns', [CampaignController::class, 'index'])->defaults('_config', [
-            'view' => 'admin::marketing.email-marketing.campaigns.index',
-        ])->name('admin.campaigns.index');
+        Route::prefix('communications')->group(function () {
+            /**
+             * Emails templates routes.
+             */
+            Route::controller(TemplateController::class)->prefix('email-templates')->group(function () {
+                Route::get('', 'index')->name('admin.marketing.communications.email_templates.index');
 
-        Route::get('campaigns/create', [CampaignController::class, 'create'])->defaults('_config', [
-            'view' => 'admin::marketing.email-marketing.campaigns.create',
-        ])->name('admin.campaigns.create');
+                Route::get('create', 'create')->name('admin.marketing.communications.email_templates.create');
 
-        Route::post('campaigns/create', [CampaignController::class, 'store'])->defaults('_config', [
-            'redirect' => 'admin.campaigns.index',
-        ])->name('admin.campaigns.store');
+                Route::post('create', 'store')->name('admin.marketing.communications.email_templates.store');
 
-        Route::get('campaigns/edit/{id}', [CampaignController::class, 'edit'])->defaults('_config', [
-            'view' => 'admin::marketing.email-marketing.campaigns.edit',
-        ])->name('admin.campaigns.edit');
+                Route::get('edit/{id}', 'edit')->name('admin.marketing.communications.email_templates.edit');
 
-        Route::post('campaigns/edit/{id}', [CampaignController::class, 'update'])->defaults('_config', [
-            'redirect' => 'admin.campaigns.index',
-        ])->name('admin.campaigns.update');
+                Route::put('edit/{id}', 'update')->name('admin.marketing.communications.email_templates.update');
 
-        Route::post('campaigns/delete/{id}', [CampaignController::class, 'destroy'])->name('admin.campaigns.delete');
+                Route::delete('edit/{id}', 'destroy')->name('admin.marketing.communications.email_templates.delete');
+            });
+
+            /**
+             * Events routes.
+             */
+            Route::controller(EventController::class)->prefix('events')->group(function () {
+                Route::get('', 'index')->name('admin.marketing.communications.events.index');
+
+                Route::post('create', 'store')->name('admin.marketing.communications.events.store');
+
+                Route::get('edit/{id}', 'edit')->name('admin.marketing.communications.events.edit');
+
+                Route::put('edit', 'update')->name('admin.marketing.communications.events.update');
+
+                Route::delete('edit/{id}', 'destroy')->name('admin.marketing.communications.events.delete');
+            });
+
+            /**
+             * Campaigns routes.
+             */
+            Route::controller(CampaignController::class)->prefix('campaigns')->group(function () {
+                Route::get('', 'index')->name('admin.marketing.communications.campaigns.index');
+
+                Route::get('create', 'create')->name('admin.marketing.communications.campaigns.create');
+
+                Route::post('create', 'store')->name('admin.marketing.communications.campaigns.store');
+
+                Route::get('edit/{id}', 'edit')->name('admin.marketing.communications.campaigns.edit');
+
+                Route::put('edit/{id}', 'update')->name('admin.marketing.communications.campaigns.update');
+
+                Route::delete('edit/{id}', 'destroy')->name('admin.marketing.communications.campaigns.delete');
+            });
+
+            /**
+             * subscribers routes.
+             */
+            Route::controller(SubscriptionController::class)->prefix('subscribers')->group(function () {
+                Route::get('', 'index')->name('admin.marketing.communications.subscribers.index');
+
+                Route::get('edit/{id}', 'edit')->name('admin.marketing.communications.subscribers.edit');
+
+                Route::put('edit', 'update')->name('admin.marketing.communications.subscribers.update');
+
+                Route::delete('edit/{id}', 'destroy')->name('admin.marketing.communications.subscribers.delete');
+            });
+        });
 
         /**
-         * Emails templates routes.
+         * Search and SEO routes.
          */
-        Route::get('email-templates', [TemplateController::class, 'index'])->defaults('_config', [
-            'view' => 'admin::marketing.email-marketing.templates.index',
-        ])->name('admin.email-templates.index');
+        Route::prefix('search-seo')->group(function () {
+            /**
+             * URL Rewrite routes.
+             */
+            Route::controller(URLRewriteController::class)->prefix('url-rewrites')->group(function () {
+                Route::get('', 'index')->name('admin.marketing.search_seo.url_rewrites.index');
 
-        Route::get('email-templates/create', [TemplateController::class, 'create'])->defaults('_config', [
-            'view' => 'admin::marketing.email-marketing.templates.create',
-        ])->name('admin.email-templates.create');
+                Route::post('create', 'store')->name('admin.marketing.search_seo.url_rewrites.store');
 
-        Route::post('email-templates/create', [TemplateController::class, 'store'])->defaults('_config', [
-            'redirect' => 'admin.email-templates.index',
-        ])->name('admin.email-templates.store');
+                Route::put('edit', 'update')->name('admin.marketing.search_seo.url_rewrites.update');
 
-        Route::get('email-templates/edit/{id}', [TemplateController::class, 'edit'])->defaults('_config', [
-            'view' => 'admin::marketing.email-marketing.templates.edit',
-        ])->name('admin.email-templates.edit');
+                Route::delete('edit/{id}', 'destroy')->name('admin.marketing.search_seo.url_rewrites.delete');
 
-        Route::post('email-templates/edit/{id}', [TemplateController::class, 'update'])->defaults('_config', [
-            'redirect' => 'admin.email-templates.index',
-        ])->name('admin.email-templates.update');
+                Route::post('mass-delete', 'massDestroy')->name('admin.marketing.search_seo.url_rewrites.mass_delete');
+            });
 
-        Route::post('email-templates/delete/{id}', [TemplateController::class, 'destroy'])->name('admin.email-templates.delete');
+            /**
+             * Search Terms routes.
+             */
+            Route::controller(SearchTermController::class)->prefix('search-terms')->group(function () {
+                Route::get('', 'index')->name('admin.marketing.search_seo.search_terms.index');
 
-        /**
-         * Events routes.
-         */
-        Route::get('events', [EventController::class, 'index'])->defaults('_config', [
-            'view' => 'admin::marketing.email-marketing.events.index',
-        ])->name('admin.events.index');
+                Route::post('create', 'store')->name('admin.marketing.search_seo.search_terms.store');
 
-        Route::get('events/create', [EventController::class, 'create'])->defaults('_config', [
-            'view' => 'admin::marketing.email-marketing.events.create',
-        ])->name('admin.events.create');
+                Route::put('edit', 'update')->name('admin.marketing.search_seo.search_terms.update');
 
-        Route::post('events/create', [EventController::class, 'store'])->defaults('_config', [
-            'redirect' => 'admin.events.index',
-        ])->name('admin.events.store');
+                Route::delete('edit/{id}', 'destroy')->name('admin.marketing.search_seo.search_terms.delete');
 
-        Route::get('events/edit/{id}', [EventController::class, 'edit'])->defaults('_config', [
-            'view' => 'admin::marketing.email-marketing.events.edit',
-        ])->name('admin.events.edit');
+                Route::post('mass-delete', 'massDestroy')->name('admin.marketing.search_seo.search_terms.mass_delete');
+            });
 
-        Route::post('events/edit/{id}', [EventController::class, 'update'])->defaults('_config', [
-            'redirect' => 'admin.events.index',
-        ])->name('admin.events.update');
+            /**
+             * Search Synonyms routes.
+             */
+            Route::controller(SearchSynonymController::class)->prefix('search-synonyms')->group(function () {
+                Route::get('', 'index')->name('admin.marketing.search_seo.search_synonyms.index');
 
-        Route::post('events/delete/{id}', [EventController::class, 'destroy'])->name('admin.events.delete');
+                Route::post('create', 'store')->name('admin.marketing.search_seo.search_synonyms.store');
 
-        /**
-         * Admin store front settings route.
-         */
-        Route::get('/subscribers', [SubscriptionController::class, 'index'])->defaults('_config', [
-            'view' => 'admin::marketing.email-marketing.subscribers.index',
-        ])->name('admin.customers.subscribers.index');
+                Route::put('edit', 'update')->name('admin.marketing.search_seo.search_synonyms.update');
 
-        /**
-         * Destroy a newsletter subscription item.
-         */
-        Route::post('subscribers/delete/{id}', [SubscriptionController::class, 'destroy'])->name('admin.customers.subscribers.delete');
+                Route::delete('edit/{id}', 'destroy')->name('admin.marketing.search_seo.search_synonyms.delete');
 
-        Route::get('subscribers/edit/{id}', [SubscriptionController::class, 'edit'])->defaults('_config', [
-            'view' => 'admin::marketing.email-marketing.subscribers.edit',
-        ])->name('admin.customers.subscribers.edit');
+                Route::post('mass-delete', 'massDestroy')->name('admin.marketing.search_seo.search_synonyms.mass_delete');
+            });
 
-        Route::put('subscribers/update/{id}', [SubscriptionController::class, 'update'])->defaults('_config', [
-            'redirect' => 'admin.customers.subscribers.index',
-        ])->name('admin.customers.subscribers.update');
+            /**
+             * Sitemaps routes.
+             */
+            Route::controller(SitemapController::class)->prefix('sitemaps')->group(function () {
+                Route::get('', 'index')->name('admin.marketing.search_seo.sitemaps.index');
 
-        /**
-         * Cart rules routes.
-         */
-        Route::get('sitemaps', [SitemapController::class, 'index'])->defaults('_config', [
-            'view' => 'admin::marketing.sitemaps.index',
-        ])->name('admin.sitemaps.index');
+                Route::post('create', 'store')->name('admin.marketing.search_seo.sitemaps.store');
 
-        Route::get('sitemaps/create', [SitemapController::class, 'create'])->defaults('_config', [
-            'view' => 'admin::marketing.sitemaps.create',
-        ])->name('admin.sitemaps.create');
+                Route::put('edit', 'update')->name('admin.marketing.search_seo.sitemaps.update');
 
-        Route::post('sitemaps/create', [SitemapController::class, 'store'])->defaults('_config', [
-            'redirect' => 'admin.sitemaps.index',
-        ])->name('admin.sitemaps.store');
-
-        Route::get('sitemaps/edit/{id}', [SitemapController::class, 'edit'])->defaults('_config', [
-            'view' => 'admin::marketing.sitemaps.edit',
-        ])->name('admin.sitemaps.edit');
-
-        Route::put('sitemaps/edit/{id}', [SitemapController::class, 'update'])->defaults('_config', [
-            'redirect' => 'admin.sitemaps.index',
-        ])->name('admin.sitemaps.update');
-
-        Route::post('sitemaps/delete/{id}', [SitemapController::class, 'destroy'])->name('admin.sitemaps.delete');
+                Route::delete('edit/{id}', 'destroy')->name('admin.marketing.search_seo.sitemaps.delete');
+            });
+        });
     });
 });

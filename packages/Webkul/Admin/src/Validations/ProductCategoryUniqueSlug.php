@@ -4,8 +4,9 @@ namespace Webkul\Admin\Validations;
 
 use Illuminate\Contracts\Validation\Rule;
 use Illuminate\Support\Facades\DB;
+use Webkul\Attribute\Repositories\AttributeRepository;
 use Webkul\Category\Models\CategoryTranslationProxy;
-use Webkul\Product\Models\ProductFlatProxy;
+use Webkul\Product\Repositories\ProductAttributeValueRepository;
 
 class ProductCategoryUniqueSlug implements Rule
 {
@@ -34,9 +35,7 @@ class ProductCategoryUniqueSlug implements Rule
     public function __construct(
         protected $tableName = null,
         protected $id = null
-    )
-    {
-    }
+    ) {}
 
     /**
      * Determine if the validation rule passes.
@@ -87,7 +86,11 @@ class ProductCategoryUniqueSlug implements Rule
      */
     protected function isSlugExistsInCategories($slug)
     {
-        if ($this->tableName && $this->id && $this->tableName === 'category_translations') {
+        if (
+            $this->tableName
+            && $this->id
+            && $this->tableName === 'category_translations'
+        ) {
             return CategoryTranslationProxy::modelClass()::where('category_id', '<>', $this->id)
                 ->where('slug', $slug)
                 ->limit(1)
@@ -109,17 +112,13 @@ class ProductCategoryUniqueSlug implements Rule
      */
     protected function isSlugExistsInProducts($slug)
     {
-        if ($this->tableName && $this->id && $this->tableName === 'product_flat') {
-            return ProductFlatProxy::modelClass()::where('product_id', '<>', $this->id)
-                ->where('url_key', $slug)
-                ->limit(1)
-                ->select(DB::raw(1))
-                ->exists();
-        }
+        $attribute = app(AttributeRepository::class)->findOneByField('code', 'url_key');
 
-        return ProductFlatProxy::modelClass()::where('url_key', $slug)
-            ->limit(1)
-            ->select(DB::raw(1))
-            ->exists();
+        return ! app(ProductAttributeValueRepository::class)->isValueUnique(
+            $this->id,
+            $attribute->id,
+            $attribute->column_name,
+            request($attribute->code)
+        );
     }
 }

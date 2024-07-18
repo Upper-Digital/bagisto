@@ -2,7 +2,6 @@
 
 namespace Webkul\Customer\Repositories;
 
-use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
 use Webkul\Core\Eloquent\Repository;
 use Webkul\Sales\Models\Order;
@@ -11,78 +10,35 @@ class CustomerRepository extends Repository
 {
     /**
      * Specify model class name.
-     *
-     * @return mixed
      */
-    public function model()
+    public function model(): string
     {
-        return \Webkul\Customer\Contracts\Customer::class;
-    }
-
-    /**
-     * Create customer.
-     *
-     * @param  array  $attributes
-     * @return mixed
-     */
-    public function create($attributes)
-    {
-        Event::dispatch('customer.registration.before');
-
-        $customer = parent::create($attributes);
-
-        Event::dispatch('customer.registration.after', $customer);
-
-        return $customer;
-    }
-
-    /**
-     * Update customer.
-     *
-     * @param  array  $attributes
-     * @return mixed
-     */
-    public function update(array $attributes, $id)
-    {
-        Event::dispatch('customer.update.before');
-
-        $customer = parent::update($attributes, $id);
-
-        Event::dispatch('customer.update.after', $customer);
-
-        return $customer;
+        return 'Webkul\Customer\Contracts\Customer';
     }
 
     /**
      * Check if customer has order pending or processing.
      *
      * @param  \Webkul\Customer\Models\Customer
-     * @return boolean
+     * @return bool
      */
-    public function checkIfCustomerHasOrderPendingOrProcessing($customer)
+    public function haveActiveOrders($customer)
     {
-        return $customer->all_orders->pluck('status')->contains(function ($val) {
+        return $customer->orders->pluck('status')->contains(function ($val) {
             return $val === 'pending' || $val === 'processing';
         });
     }
 
     /**
-     * Check if bulk customers, if they have order pending or processing.
+     * Returns current customer group
      *
-     * @param  array
-     * @return boolean
+     * @return \Webkul\Customer\Models\CustomerGroup
      */
-    public function checkBulkCustomerIfTheyHaveOrderPendingOrProcessing($customerIds)
+    public function getCurrentGroup()
     {
-        foreach ($customerIds as $customerId) {
-            $customer = $this->findorFail($customerId);
+        $customer = auth()->guard()->user();
 
-            if ($this->checkIfCustomerHasOrderPendingOrProcessing($customer)) {
-                return true;
-            }
-        }
-
-        return false;
+        return $customer->group ?? core()->getGuestCustomerGroup();
     }
 
     /**
@@ -90,7 +46,7 @@ class CustomerRepository extends Repository
      *
      * @param  array  $data
      * @param  \Webkul\Customer\Models\Customer  $customer
-     * @param  string $type
+     * @param  string  $type
      * @return void
      */
     public function uploadImages($data, $customer, $type = 'image')
@@ -99,8 +55,8 @@ class CustomerRepository extends Repository
             $request = request();
 
             foreach ($data[$type] as $imageId => $image) {
-                $file = $type . '.' . $imageId;
-                $dir = 'customer/' . $customer->id;
+                $file = $type.'.'.$imageId;
+                $dir = 'customer/'.$customer->id;
 
                 if ($request->hasFile($file)) {
                     if ($customer->{$type}) {
@@ -127,7 +83,7 @@ class CustomerRepository extends Repository
      * @param  \Webkul\Customer\Contracts\Customer  $customer
      * @return mixed
      */
-    public function syncNewRegisteredCustomerInformations($customer)
+    public function syncNewRegisteredCustomerInformation($customer)
     {
         /**
          * Setting registered customer to orders.

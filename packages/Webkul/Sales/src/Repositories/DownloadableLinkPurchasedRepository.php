@@ -2,9 +2,8 @@
 
 namespace Webkul\Sales\Repositories;
 
-use Illuminate\Container\Container as App;
+use Illuminate\Container\Container;
 use Webkul\Core\Eloquent\Repository;
-use Webkul\Sales\Contracts\DownloadableLinkPurchased;
 use Webkul\Product\Repositories\ProductDownloadableLinkRepository;
 
 class DownloadableLinkPurchasedRepository extends Repository
@@ -12,25 +11,21 @@ class DownloadableLinkPurchasedRepository extends Repository
     /**
      * Create a new repository instance.
      *
-     * @param  \Webkul\Product\Repositories\ProductDownloadableLinkRepository  $productDownloadableLinkRepository
      * @return void
      */
     public function __construct(
         protected ProductDownloadableLinkRepository $productDownloadableLinkRepository,
-        App $app
-    )
-    {
-        parent::__construct($app);
+        Container $container
+    ) {
+        parent::__construct($container);
     }
 
     /**
      * Specify Model class name
-     *
-     * @return string
      */
-    function model()
+    public function model(): string
     {
-        return DownloadableLinkPurchased::class;
+        return 'Webkul\Sales\Contracts\DownloadableLinkPurchased';
     }
 
     /**
@@ -68,10 +63,13 @@ class DownloadableLinkPurchasedRepository extends Repository
      * Return true, if ordered item is valid downloadable product with links
      *
      * @param  \Webkul\Sales\Contracts\OrderItem  $orderItem
-     * @return bool
      */
-    private function isValidDownloadableProduct($orderItem) : bool {
-        if (stristr($orderItem->type,'downloadable') !== false && isset($orderItem->additional['links'])) {
+    private function isValidDownloadableProduct($orderItem): bool
+    {
+        if (
+            stristr($orderItem->type, 'downloadable') !== false
+            && isset($orderItem->additional['links'])
+        ) {
             return true;
         }
 
@@ -80,7 +78,7 @@ class DownloadableLinkPurchasedRepository extends Repository
 
     /**
      * @param  \Webkul\Sales\Contracts\OrderItem  $orderItem
-     * @param  string    $status
+     * @param  string  $status
      * @return void
      */
     public function updateStatus($orderItem, $status)
@@ -97,15 +95,15 @@ class DownloadableLinkPurchasedRepository extends Repository
                     }
 
                     $orderedQty = $purchasedLink->order_item->qty_ordered;
-                    $totalInvoiceQty = $totalInvoiceQty * ($purchasedLink->download_bought / $orderedQty);            
+                    $totalInvoiceQty = $totalInvoiceQty * ($purchasedLink->download_bought / $orderedQty);
 
                     $this->update([
-                        'status' => $purchasedLink->download_used == $totalInvoiceQty ? $status : $purchasedLink->status,
+                        'status'            => $purchasedLink->download_used == $totalInvoiceQty ? $status : $purchasedLink->status,
                         'download_canceled' => $purchasedLink->download_bought - $totalInvoiceQty,
                     ], $purchasedLink->id);
                 } else {
                     $this->update([
-                        'status' => $status,
+                        'status'            => $status,
                         'download_canceled' => $purchasedLink->download_bought,
                     ], $purchasedLink->id);
                 }

@@ -3,12 +3,9 @@
 namespace Webkul\Shop\Http\Controllers;
 
 use Illuminate\Support\Facades\Storage;
-use Webkul\Attribute\Repositories\AttributeRepository;
-use Webkul\Category\Repositories\CategoryRepository;
 use Webkul\Product\Repositories\ProductAttributeValueRepository;
 use Webkul\Product\Repositories\ProductDownloadableLinkRepository;
 use Webkul\Product\Repositories\ProductDownloadableSampleRepository;
-use Webkul\Product\Repositories\ProductFlatRepository;
 use Webkul\Product\Repositories\ProductRepository;
 
 class ProductController extends Controller
@@ -16,25 +13,14 @@ class ProductController extends Controller
     /**
      * Create a new controller instance.
      *
-     * @param  \Webkul\Product\Repositories\ProductRepository  $productRepository
-     * @param  \Webkul\Product\Repositories\ProductFlatRepository  $productFlatRepository
-     * @param  \Webkul\Product\Repositories\ProductAttributeValueRepository  $productAttributeValueRepository
-     * @param  \Webkul\Product\Repositories\ProductDownloadableSampleRepository  $productDownloadableSampleRepository
-     * @param  \Webkul\Product\Repositories\ProductDownloadableLinkRepository  $productDownloadableLinkRepository
-     * @param  \Webkul\Category\Repositories\CategoryRepository  $categoryRepository
      * @return void
      */
     public function __construct(
         protected ProductRepository $productRepository,
-        protected ProductFlatRepository $productFlatRepository,
         protected ProductAttributeValueRepository $productAttributeValueRepository,
         protected ProductDownloadableSampleRepository $productDownloadableSampleRepository,
-        protected ProductDownloadableLinkRepository $productDownloadableLinkRepository,
-        protected CategoryRepository $categoryRepository
-    )
-    {
-        parent::__construct();
-    }
+        protected ProductDownloadableLinkRepository $productDownloadableLinkRepository
+    ) {}
 
     /**
      * Download image or file.
@@ -84,6 +70,12 @@ class ProductController extends Controller
             } else {
                 $productDownloadableSample = $this->productDownloadableSampleRepository->findOrFail(request('id'));
 
+                if ($product = $this->productRepository->findOrFail($productDownloadableSample->product_id)) {
+                    if (! $product->visible_individually) {
+                        return redirect()->back();
+                    }
+                }
+
                 if ($productDownloadableSample->type == 'file') {
                     return Storage::download($productDownloadableSample->file);
                 } else {
@@ -99,45 +91,5 @@ class ProductController extends Controller
         } catch (\Exception $e) {
             abort(404);
         }
-    }
-
-    /**
-     * Get filter attributes for product.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function getFilterAttributes($categoryId = null, AttributeRepository $attributeRepository)
-    {
-        $filterAttributes = [];
-
-        if ($category = $this->categoryRepository->find($categoryId)) {
-            $filterAttributes = $this->productFlatRepository->getFilterAttributes($category);
-        }
-
-        if (! count($filterAttributes) > 0) {
-            $filterAttributes = $attributeRepository->getFilterAttributes();
-        }
-
-        return response()->json([
-            'filter_attributes' => $filterAttributes,
-        ]);
-    }
-
-    /**
-     * Get category product maximum price.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function getCategoryProductMaximumPrice($categoryId = null)
-    {
-        $maxPrice = 0;
-
-        if ($category = $this->categoryRepository->find($categoryId)) {
-            $maxPrice = $this->productFlatRepository->handleCategoryProductMaximumPrice($category);
-        }
-
-        return response()->json([
-            'max_price' => $maxPrice,
-        ]);
     }
 }

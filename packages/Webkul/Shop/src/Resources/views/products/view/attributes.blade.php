@@ -3,15 +3,18 @@
 {!! view_render_event('bagisto.shop.products.view.attributes.before', ['product' => $product]) !!}
 
 @if ($customAttributeValues = $productViewHelper->getAdditionalData($product))
-    <accordian :title="'{{ __('shop::app.products.specification') }}'" :active="false">
+    <accordian
+        :title="trans('shop::app.products.specification')"
+        :active="false"
+    >
         <div slot="header">
-            {{ __('shop::app.products.specification') }}
+            @lang('shop::app.products.specification')
+
             <i class="icon expand-icon right"></i>
         </div>
 
         <div slot="body">
             <table class="full-specifications">
-
                 @foreach ($customAttributeValues as $attribute)
                     <tr>
                         @if ($attribute['label'])
@@ -19,15 +22,22 @@
                         @else
                             <td>{{ $attribute['admin_name'] }}</td>
                         @endif
-                        @if ($attribute['type'] == 'file' && $attribute['value'])
+
+                        @if (
+                            $attribute['type'] == 'file'
+                            && $attribute['value']
+                        )
                             <td>
-                                <a  href="{{ route('shop.product.file.download', [$product->product_id, $attribute['id']])}}">
+                                <a  href="{{ route('shop.product.file.download', [$product->id, $attribute['id']])}}">
                                     <i class="icon sort-down-icon download"></i>
                                 </a>
                             </td>
-                        @elseif ($attribute['type'] == 'image' && $attribute['value'])
+                        @elseif (
+                            $attribute['type'] == 'image'
+                            && $attribute['value']
+                        )
                             <td>
-                                <a href="{{ route('shop.product.file.download', [$product->product_id, $attribute['id']])}}">
+                                <a href="{{ route('shop.product.file.download', [$product->id, $attribute['id']])}}">
                                     <img src="{{ Storage::url($attribute['value']) }}" style="height: 20px; width: 20px;" alt=""/>
                                 </a>
                             </td>

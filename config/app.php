@@ -1,7 +1,9 @@
 <?php
 
-return [
+use Illuminate\Support\Facades\Facade;
+use Illuminate\Support\ServiceProvider;
 
+return [
     /*
     |--------------------------------------------------------------------------
     | Application Name
@@ -40,6 +42,18 @@ return [
     */
 
     'debug' => env('APP_DEBUG', false),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Debug Allowed IPs
+    |--------------------------------------------------------------------------
+    |
+    | This value is used to allow the debug mode only for the specified IPs.
+    | This is useful when you want to debug the application on the production
+    | server without enabling it for everyone.
+    */
+
+    'debug_allowed_ips' => env('APP_DEBUG_ALLOWED_IPS', null),
 
     /*
     |--------------------------------------------------------------------------
@@ -157,35 +171,6 @@ return [
 
     'cipher' => 'AES-256-CBC',
 
-    /**
-     * Code editor.
-     */
-    'editor' => 'vscode',
-
-    /*
-     *Application Version
-     */
-    'version' => env('APP_VERSION', '1.x-dev'),
-
-    /**
-     * Blacklisting attributes while debugging
-     */
-    'debug_blacklist' => [
-        '_ENV' => [
-            'APP_KEY',
-            'DB_PASSWORD'
-        ],
-
-        '_SERVER' => [
-            'APP_KEY',
-            'DB_PASSWORD'
-        ],
-
-        '_POST' => [
-            'password'
-        ],
-    ],
-
     /*
     |--------------------------------------------------------------------------
     | Autoloaded Service Providers
@@ -197,44 +182,19 @@ return [
     |
     */
 
-    'providers' => [
-
-        /*
-         * Laravel Framework Service Providers.
+    'providers' => ServiceProvider::defaultProviders()->merge([
+        /**
+         * Package service providers.
          */
-        Illuminate\Auth\AuthServiceProvider::class,
-        Illuminate\Broadcasting\BroadcastServiceProvider::class,
-        Illuminate\Bus\BusServiceProvider::class,
-        Illuminate\Cache\CacheServiceProvider::class,
-        Illuminate\Foundation\Providers\ConsoleSupportServiceProvider::class,
-        Illuminate\Cookie\CookieServiceProvider::class,
-        Illuminate\Database\DatabaseServiceProvider::class,
-        Illuminate\Encryption\EncryptionServiceProvider::class,
-        Illuminate\Filesystem\FilesystemServiceProvider::class,
-        Illuminate\Foundation\Providers\FoundationServiceProvider::class,
-        Illuminate\Hashing\HashServiceProvider::class,
-        Illuminate\Mail\MailServiceProvider::class,
-        Illuminate\Notifications\NotificationServiceProvider::class,
-        Illuminate\Pagination\PaginationServiceProvider::class,
-        Illuminate\Pipeline\PipelineServiceProvider::class,
-        Illuminate\Queue\QueueServiceProvider::class,
-        Illuminate\Redis\RedisServiceProvider::class,
-        Illuminate\Auth\Passwords\PasswordResetServiceProvider::class,
-        Illuminate\Session\SessionServiceProvider::class,
-        Illuminate\Translation\TranslationServiceProvider::class,
-        Illuminate\Validation\ValidationServiceProvider::class,
-        Illuminate\View\ViewServiceProvider::class,
-
-        /*
-         * Package Service Providers.
-         */
-
         Astrotomic\Translatable\TranslatableServiceProvider::class,
+        Barryvdh\DomPDF\ServiceProvider::class,
         Intervention\Image\ImageServiceProvider::class,
+        Konekt\Concord\ConcordServiceProvider::class,
         Maatwebsite\Excel\ExcelServiceProvider::class,
+        Prettus\Repository\Providers\RepositoryServiceProvider::class,
 
-        /*
-         * Application Service Providers.
+        /**
+         * Application service providers.
          */
         App\Providers\AppServiceProvider::class,
         App\Providers\AuthServiceProvider::class,
@@ -243,46 +203,41 @@ return [
         App\Providers\RouteServiceProvider::class,
 
         /**
-         * Repository Service Providers.
+         * Webkul package service providers.
          */
-        Prettus\Repository\Providers\RepositoryServiceProvider::class,
-        Konekt\Concord\ConcordServiceProvider::class,
-        Flynsarmy\DbBladeCompiler\DbBladeCompilerServiceProvider::class,
-        Barryvdh\DomPDF\ServiceProvider::class,
-
-        /**
-         * Webkul Package Service Providers.
-         */
-        Webkul\Theme\Providers\ThemeServiceProvider::class,
-        Webkul\User\Providers\UserServiceProvider::class,
         Webkul\Admin\Providers\AdminServiceProvider::class,
-        Webkul\Ui\Providers\UiServiceProvider::class,
-        Webkul\Category\Providers\CategoryServiceProvider::class,
         Webkul\Attribute\Providers\AttributeServiceProvider::class,
+        Webkul\CartRule\Providers\CartRuleServiceProvider::class,
+        Webkul\CatalogRule\Providers\CatalogRuleServiceProvider::class,
+        Webkul\Category\Providers\CategoryServiceProvider::class,
+        Webkul\Checkout\Providers\CheckoutServiceProvider::class,
+        Webkul\CMS\Providers\CMSServiceProvider::class,
         Webkul\Core\Providers\CoreServiceProvider::class,
         Webkul\Core\Providers\EnvValidatorServiceProvider::class,
-        Webkul\Shop\Providers\ShopServiceProvider::class,
         Webkul\Customer\Providers\CustomerServiceProvider::class,
-        Webkul\Inventory\Providers\InventoryServiceProvider::class,
-        Webkul\Product\Providers\ProductServiceProvider::class,
-        Webkul\Checkout\Providers\CheckoutServiceProvider::class,
-        Webkul\Shipping\Providers\ShippingServiceProvider::class,
-        Webkul\Payment\Providers\PaymentServiceProvider::class,
-        Webkul\Paypal\Providers\PaypalServiceProvider::class,
-        Webkul\Sales\Providers\SalesServiceProvider::class,
-        Webkul\Tax\Providers\TaxServiceProvider::class,
-        Webkul\CatalogRule\Providers\CatalogRuleServiceProvider::class,
-        Webkul\CartRule\Providers\CartRuleServiceProvider::class,
-        Webkul\Rule\Providers\RuleServiceProvider::class,
-        Webkul\CMS\Providers\CMSServiceProvider::class,
-        Webkul\Velocity\Providers\VelocityServiceProvider::class,
-        Webkul\BookingProduct\Providers\BookingProductServiceProvider::class,
-        Webkul\SocialLogin\Providers\SocialLoginServiceProvider::class,
+        Webkul\DataGrid\Providers\DataGridServiceProvider::class,
+        Webkul\DataTransfer\Providers\DataTransferServiceProvider::class,
         Webkul\DebugBar\Providers\DebugBarServiceProvider::class,
+        Webkul\FPC\Providers\FPCServiceProvider::class,
+        Webkul\Installer\Providers\InstallerServiceProvider::class,
+        Webkul\Inventory\Providers\InventoryServiceProvider::class,
+        Webkul\MagicAI\Providers\MagicAIServiceProvider::class,
         Webkul\Marketing\Providers\MarketingServiceProvider::class,
         Webkul\Notification\Providers\NotificationServiceProvider::class,
-        Webkul\Sitemap\Providers\SitemapServiceProvider::class
-    ],
+        Webkul\Payment\Providers\PaymentServiceProvider::class,
+        Webkul\Paypal\Providers\PaypalServiceProvider::class,
+        Webkul\Product\Providers\ProductServiceProvider::class,
+        Webkul\Rule\Providers\RuleServiceProvider::class,
+        Webkul\Sales\Providers\SalesServiceProvider::class,
+        Webkul\Shipping\Providers\ShippingServiceProvider::class,
+        Webkul\Shop\Providers\ShopServiceProvider::class,
+        Webkul\Sitemap\Providers\SitemapServiceProvider::class,
+        Webkul\SocialLogin\Providers\SocialLoginServiceProvider::class,
+        Webkul\SocialShare\Providers\SocialShareServiceProvider::class,
+        Webkul\Tax\Providers\TaxServiceProvider::class,
+        Webkul\Theme\Providers\ThemeServiceProvider::class,
+        Webkul\User\Providers\UserServiceProvider::class,
+    ])->toArray(),
 
     /*
     |--------------------------------------------------------------------------
@@ -295,64 +250,17 @@ return [
     |
     */
 
-    'aliases' => [
-
-        /**
-         * Laravel
-         *
-         * Place your aliases in alphabetical order.
-         */
-        'App' => Illuminate\Support\Facades\App::class,
-        'Artisan' => Illuminate\Support\Facades\Artisan::class,
-        'Auth' => Illuminate\Support\Facades\Auth::class,
-        'Blade' => Illuminate\Support\Facades\Blade::class,
-        'Broadcast' => Illuminate\Support\Facades\Broadcast::class,
-        'Bus' => Illuminate\Support\Facades\Bus::class,
-        'Cache' => Illuminate\Support\Facades\Cache::class,
-        'Config' => Illuminate\Support\Facades\Config::class,
-        'Cookie' => Illuminate\Support\Facades\Cookie::class,
-        'Crypt' => Illuminate\Support\Facades\Crypt::class,
-        'DB' => Illuminate\Support\Facades\DB::class,
-        'Eloquent' => Illuminate\Database\Eloquent\Model::class,
-        'Event' => Illuminate\Support\Facades\Event::class,
-        'File' => Illuminate\Support\Facades\File::class,
-        'Gate' => Illuminate\Support\Facades\Gate::class,
-        'Hash' => Illuminate\Support\Facades\Hash::class,
-        'Lang' => Illuminate\Support\Facades\Lang::class,
-        'Log' => Illuminate\Support\Facades\Log::class,
-        'Mail' => Illuminate\Support\Facades\Mail::class,
-        'Notification' => Illuminate\Support\Facades\Notification::class,
-        'Password' => Illuminate\Support\Facades\Password::class,
-        'Queue' => Illuminate\Support\Facades\Queue::class,
-        'Redirect' => Illuminate\Support\Facades\Redirect::class,
-        'Redis' => Illuminate\Support\Facades\Redis::class,
-        'Request' => Illuminate\Support\Facades\Request::class,
-        'Response' => Illuminate\Support\Facades\Response::class,
-        'Route' => Illuminate\Support\Facades\Route::class,
-        'Schema' => Illuminate\Support\Facades\Schema::class,
-        'Session' => Illuminate\Support\Facades\Session::class,
-        'Storage' => Illuminate\Support\Facades\Storage::class,
-        'URL' => Illuminate\Support\Facades\URL::class,
-        'Validator' => Illuminate\Support\Facades\Validator::class,
-        'View' => Illuminate\Support\Facades\View::class,
-
-        /**
-         * Bagisto
-         *
-         * Place your aliases in alphabetical order.
-         */
-        'Captcha' => Webkul\Customer\Facades\Captcha::class,
-        'Cart' => Webkul\Checkout\Facades\Cart::class,
-        'Concord' => Konekt\Concord\Facades\Concord::class,
-        'Core' => Webkul\Core\Facades\Core::class,
-        'Datagrid' => Webkul\Ui\DataGrid\Facades\DataGrid::class,
-        'DbView' => Flynsarmy\DbBladeCompiler\Facades\DbView::class,
-        'Debugbar' => Barryvdh\Debugbar\Facade::class,
-        'Excel' => Maatwebsite\Excel\Facades\Excel::class,
-        'Helper'  => Konekt\Concord\Facades\Helper::class,
-        'Image' => Intervention\Image\Facades\Image::class,
-        'PDF' => Barryvdh\DomPDF\Facade::class,
+    'aliases' => Facade::defaultAliases()->merge([
+        'Captcha'      => Webkul\Customer\Facades\Captcha::class,
+        'Cart'         => Webkul\Checkout\Facades\Cart::class,
+        'Concord'      => Konekt\Concord\Facades\Concord::class,
+        'Core'         => Webkul\Core\Facades\Core::class,
+        'Excel'        => Maatwebsite\Excel\Facades\Excel::class,
+        'Helper'       => Konekt\Concord\Facades\Helper::class,
+        'Image'        => Intervention\Image\Facades\Image::class,
+        'PDF'          => Barryvdh\DomPDF\Facade\Pdf::class,
         'ProductImage' => Webkul\Product\Facades\ProductImage::class,
         'ProductVideo' => Webkul\Product\Facades\ProductVideo::class,
-    ],
+        'Redis'        => Illuminate\Support\Facades\Redis::class,
+    ])->toArray(),
 ];

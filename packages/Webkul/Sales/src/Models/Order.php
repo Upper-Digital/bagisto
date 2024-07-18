@@ -17,20 +17,50 @@ class Order extends Model implements OrderContract
 {
     use HasFactory;
 
+    protected $dates = ['created_at'];
+
+    protected $appends = ['datetime'];
+
+    /**
+     * Pending Order
+     */
     public const STATUS_PENDING = 'pending';
 
+    /**
+     * Payment is in pending
+     */
     public const STATUS_PENDING_PAYMENT = 'pending_payment';
 
+    /**
+     * Order in processing
+     */
     public const STATUS_PROCESSING = 'processing';
 
+    /**
+     * Complete Order
+     */
     public const STATUS_COMPLETED = 'completed';
 
+    /**
+     * Canceled Order
+     */
     public const STATUS_CANCELED = 'canceled';
 
+    /**
+     * Closed Order
+     */
     public const STATUS_CLOSED = 'closed';
 
+    /**
+     * Fraud Order
+     */
     public const STATUS_FRAUD = 'fraud';
 
+    /**
+     * The attributes that aren't mass assignable.
+     *
+     * @var array
+     */
     protected $guarded = [
         'id',
         'items',
@@ -58,7 +88,7 @@ class Order extends Model implements OrderContract
      */
     public function getCustomerFullNameAttribute(): string
     {
-        return $this->customer_first_name . ' ' . $this->customer_last_name;
+        return $this->customer_first_name.' '.$this->customer_last_name;
     }
 
     /**
@@ -83,6 +113,14 @@ class Order extends Model implements OrderContract
     public function getTotalDueAttribute()
     {
         return $this->grand_total - $this->grand_total_invoiced;
+    }
+
+    /**
+     * Return Human Friendly Date
+     */
+    public function getDatetimeAttribute()
+    {
+        return $this->created_at?->diffForHumans();
     }
 
     /**
@@ -185,9 +223,9 @@ class Order extends Model implements OrderContract
     /**
      * Get the billing address for the order.
      */
-    public function billing_address(): HasMany
+    public function billing_address()
     {
-        return $this->addresses()
+        return $this->addresses
             ->where('address_type', OrderAddress::ADDRESS_TYPE_BILLING);
     }
 
@@ -203,9 +241,9 @@ class Order extends Model implements OrderContract
     /**
      * Get the shipping address for the order.
      */
-    public function shipping_address(): HasMany
+    public function shipping_address()
     {
-        return $this->addresses()
+        return $this->addresses
             ->where('address_type', OrderAddress::ADDRESS_TYPE_SHIPPING);
     }
 
@@ -228,14 +266,11 @@ class Order extends Model implements OrderContract
 
     /**
      * Checks if cart have stockable items
-     *
-     * @return boolean
      */
     public function haveStockableItems(): bool
     {
         foreach ($this->items as $item) {
-            if ($item->getTypeInstance()
-                ->isStockable()) {
+            if ($item->getTypeInstance()->isStockable()) {
                 return true;
             }
         }
@@ -245,17 +280,17 @@ class Order extends Model implements OrderContract
 
     /**
      * Checks if new shipment is allow or not
-     *
-     * @return bool
      */
     public function canShip(): bool
     {
-        if ($this->status === self::STATUS_FRAUD) {
-            return false;
-        }
-
         foreach ($this->items as $item) {
-            if ($item->canShip() && $item->order->status !== self::STATUS_CLOSED) {
+            if (
+                $item->canShip()
+                && ! in_array($item->order->status, [
+                    self::STATUS_CLOSED,
+                    self::STATUS_FRAUD,
+                ])
+            ) {
                 return true;
             }
         }
@@ -265,17 +300,17 @@ class Order extends Model implements OrderContract
 
     /**
      * Checks if new invoice is allow or not
-     *
-     * @return bool
      */
     public function canInvoice(): bool
     {
-        if ($this->status === self::STATUS_FRAUD) {
-            return false;
-        }
-
         foreach ($this->items as $item) {
-            if ($item->canInvoice() && $item->order->status !== self::STATUS_CLOSED) {
+            if (
+                $item->canInvoice()
+                && ! in_array($item->order->status, [
+                    self::STATUS_CLOSED,
+                    self::STATUS_FRAUD,
+                ])
+            ) {
                 return true;
             }
         }
@@ -285,8 +320,6 @@ class Order extends Model implements OrderContract
 
     /**
      * Verify if a invoice is still unpaid
-     *
-     * @return bool
      */
     public function hasOpenInvoice(): bool
     {
@@ -303,31 +336,23 @@ class Order extends Model implements OrderContract
 
     /**
      * Checks if order can be canceled or not
-     *
-     * @return bool
      */
     public function canCancel(): bool
     {
-        if ($this->payment->method == 'cashondelivery' && core()->getConfigData('sales.paymentmethods.cashondelivery.generate_invoice')) {
-            return false;
-        }
+        $pendingInvoice = $this->invoices->where('state', 'pending')->first();
 
-        if ($this->payment->method == 'moneytransfer' && core()->getConfigData('sales.paymentmethods.moneytransfer.generate_invoice')) {
-            return false;
-        }
-
-        if ($this->status === self::STATUS_FRAUD) {
-            return false;
-        }
-
-        $pendingInvoice = $this->invoices->where('state', 'pending')
-            ->first();
         if ($pendingInvoice) {
             return true;
         }
 
         foreach ($this->items as $item) {
-            if ($item->canCancel() && $item->order->status !== self::STATUS_CLOSED) {
+            if (
+                $item->canCancel()
+                && ! in_array($item->order->status, [
+                    self::STATUS_CLOSED,
+                    self::STATUS_FRAUD,
+                ])
+            ) {
                 return true;
             }
         }
@@ -337,29 +362,22 @@ class Order extends Model implements OrderContract
 
     /**
      * Checks if order can be refunded or not
-     *
-     * @return bool
      */
     public function canRefund(): bool
     {
-        if ($this->status === self::STATUS_FRAUD) {
-            return false;
-        }
-
-        $pendingInvoice = $this->invoices->where('state', 'pending')
-            ->first();
-        if ($pendingInvoice) {
-            return false;
-        }
-
         foreach ($this->items as $item) {
-            if ($item->qty_to_refund > 0 && $item->order->status !== self::STATUS_CLOSED) {
+            if (
+                $item->qty_to_refund > 0
+                && ! in_array($item->order->status, [
+                    self::STATUS_CLOSED,
+                    self::STATUS_FRAUD,
+                ])
+            ) {
                 return true;
             }
         }
 
-        if ($this->base_grand_total_invoiced - $this->base_grand_total_refunded - $this->refunds()
-            ->sum('base_adjustment_fee') > 0) {
+        if ($this->base_grand_total_invoiced - $this->base_grand_total_refunded - $this->refunds()->sum('base_adjustment_fee') > 0) {
             return true;
         }
 
@@ -367,12 +385,28 @@ class Order extends Model implements OrderContract
     }
 
     /**
+     * Checks if order can be reorder or not
+     */
+    public function canReorder(): bool
+    {
+        if ($this->is_guest) {
+            return false;
+        }
+
+        foreach ($this->items as $item) {
+            if (! $item->product?->getTypeInstance()->isSaleable()) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * Create a new factory instance for the model.
-     *
-     * @return Factory
      */
     protected static function newFactory(): Factory
     {
-        return OrderFactory::new ();
+        return OrderFactory::new();
     }
 }
